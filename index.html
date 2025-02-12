@@ -140,9 +140,6 @@
         }
       }
 
-      // 系统状态...
-      // 剩余代码保持不变...
-
       // 系统状态
       const fireworks = [];
       let currentPath = [];
@@ -150,41 +147,57 @@
 
       // 输入处理
       function handleInputStart(e) {
+        e.preventDefault();
         isDrawing = true;
         currentPath = [getPosition(e)];
       }
 
       function handleInputMove(e) {
         if (!isDrawing) return;
+        e.preventDefault();
         currentPath.push(getPosition(e));
       }
 
       function handleInputEnd(e) {
+        e.preventDefault();
         isDrawing = false;
-        const pos = getPosition(e);
 
-        if (currentPath.length < 5) {
-          // 点击生成随机轨迹
+        // 确保总能获取到有效坐标
+        const pos =
+          currentPath.length > 0
+            ? currentPath[currentPath.length - 1]
+            : getPosition(e);
+
+        // 调整触发阈值
+        if (currentPath.length < 3) {
+          // 降低阈值
           const angle = Math.random() * Math.PI * 2;
           const distance = 300;
-          const path = [
-            pos,
-            {
-              x: pos.x + Math.cos(angle) * distance,
-              y: pos.y + Math.sin(angle) * distance,
-            },
-          ];
-          fireworks.push(new Firework(path, true));
+          const endPoint = {
+            x: pos.x + Math.cos(angle) * distance,
+            y: pos.y + Math.sin(angle) * distance,
+          };
+          fireworks.push(new Firework([pos, endPoint], true));
         } else {
-          // 滑动生成精确轨迹
           fireworks.push(new Firework(currentPath, false));
         }
       }
 
       function getPosition(e) {
         const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let clientX, clientY;
+
+        if (e.touches && e.touches.length > 0) {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+          clientX = e.changedTouches[0].clientX;
+          clientY = e.changedTouches[0].clientY;
+        } else {
+          clientX = e.clientX;
+          clientY = e.clientY;
+        }
+
         return {
           x: clientX - rect.left,
           y: clientY - rect.top,
@@ -192,22 +205,13 @@
       }
 
       // 事件监听
+      canvas.addEventListener('touchstart', handleInputStart);
+      canvas.addEventListener('touchmove', handleInputMove);
+      canvas.addEventListener('touchend', handleInputEnd);
+
       canvas.addEventListener('mousedown', handleInputStart);
       canvas.addEventListener('mousemove', handleInputMove);
       canvas.addEventListener('mouseup', handleInputEnd);
-
-      canvas.addEventListener('touchstart', e => {
-        e.preventDefault();
-        handleInputStart(e);
-      });
-      canvas.addEventListener('touchmove', e => {
-        e.preventDefault();
-        handleInputMove(e);
-      });
-      canvas.addEventListener('touchend', e => {
-        e.preventDefault();
-        handleInputEnd(e);
-      });
 
       // 动画循环
       function animate() {
